@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/unidoc/unipdf/v3/core"
+	"github.com/unidoc/unipdf/v3/internal/strutils"
 )
 
 // PdfRectangle is a definition of a rectangle.
@@ -113,8 +114,17 @@ var reDate = regexp.MustCompile(`\s*D\s*:\s*(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(
 
 // NewPdfDate returns a new PdfDate object from a PDF date string (see 7.9.4 Dates).
 // format: "D: YYYYMMDDHHmmSSOHH'mm"
+//
+// Some producers (notably Aspose.PDF) emit date strings as UTF-16BE text marked
+// by a leading byte-order mark (0xFE 0xFF). Such strings are decoded to their
+// ASCII equivalent before matching so the date value is preserved instead of
+// rejected.
 func NewPdfDate(dateStr string) (PdfDate, error) {
 	d := PdfDate{}
+
+	if len(dateStr) >= 2 && dateStr[0] == 0xFE && dateStr[1] == 0xFF {
+		dateStr = strutils.UTF16ToString([]byte(dateStr)[2:])
+	}
 
 	matches := reDate.FindAllStringSubmatch(dateStr, 1)
 	if len(matches) < 1 {
