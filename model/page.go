@@ -118,11 +118,15 @@ func (r *PdfReader) newPdfPageFromDict(p *core.PdfObjectDictionary) (*PdfPage, e
 		if !ok {
 			return nil, errors.New("page dictionary LastModified != string")
 		}
+		// LastModified is optional metadata (PDF 32000-1 Table 30). A malformed
+		// value (e.g. a non-standard date encoding from some producers) must not
+		// abort loading the whole page; log and continue without it.
 		lastmod, err := NewPdfDate(strObj.Str())
 		if err != nil {
-			return nil, err
+			common.Log.Debug("ERROR: ignoring invalid page LastModified date: %v", err)
+		} else {
+			page.LastModified = &lastmod
 		}
-		page.LastModified = &lastmod
 	}
 
 	if obj := d.Get("Resources"); obj != nil && !core.IsNullObject(obj) {
